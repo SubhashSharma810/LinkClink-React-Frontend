@@ -41,7 +41,7 @@ function PreviewBox({ state, dispatch }) {
       <h3 className="preview-title">{videoTitle}</h3>
 
       <select
-        className="select"
+        className="quality-select"
         value={selectedFormat}
         onChange={(e) =>
           dispatch({ type: 'SET_SELECTED_FORMAT', payload: e.target.value })
@@ -51,7 +51,7 @@ function PreviewBox({ state, dispatch }) {
         {formats.length > 0 ? (
           formats.map((f, i) => (
             <option key={i} value={f.format_id}>
-              {f.resolution} - {f.with_audio} - {(f.filesize / 1024 / 1024).toFixed(1)} MB
+              {f.resolution} - {f.with_audio} - {f.filesize} MB
             </option>
           ))
         ) : (

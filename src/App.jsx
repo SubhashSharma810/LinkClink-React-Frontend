@@ -1,7 +1,7 @@
 import './styles.css';
 import { useReducer, useEffect } from 'react';
 import axios from 'axios';
-import { API_BASE, WS_URL } from './globalVariable';
+import { API_BASE } from './globalVariable';
 import { reducer, initialState } from './reducer';
 import PreviewBox from './components/PreviewBox';
 import ErrorPopup from './components/ErrorPopup';
@@ -11,20 +11,24 @@ import 'react-circular-progressbar/dist/styles.css';
 function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  // On mount, restore theme and toggle switch state
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') {
       document.body.classList.add('light-theme');
-      document.getElementById('theme-toggle').checked = true;
+      const toggle = document.getElementById('theme-toggle');
+      if (toggle) toggle.checked = true;
     }
   }, []);
 
+  // Toggle theme and save preference
   const toggleTheme = () => {
     document.body.classList.toggle('light-theme');
     const isLight = document.body.classList.contains('light-theme');
     localStorage.setItem('theme', isLight ? 'light' : 'dark');
   };
 
+  // Fetch video formats from backend
   const fetchFormats = async () => {
     if (!state.inputValue) return;
     dispatch({ type: 'SEARCH_START' });
@@ -33,14 +37,14 @@ function App() {
       const res = await axios.post(`${API_BASE}/formats`, { url: state.inputValue });
 
       if (res.data.error || !res.data.formats || res.data.formats.length === 0) {
-        dispatch({ type: 'SEARCH_ERROR', payload: 'Oh! Bring Some Good Link this Won\'t Work ' });
+        dispatch({ type: 'SEARCH_ERROR', payload: "Oh! Bring Some Good Link this Won't Work" });
         return;
       }
 
       dispatch({
         type: 'SEARCH_SUCCESS',
         payload: {
-          title: res.data.title,
+          title: res.data.videoTitle,
           thumbnail: res.data.thumbnail,
           formats: res.data.formats,
         }
@@ -49,29 +53,29 @@ function App() {
       console.error('Format fetch error', err);
       dispatch({
         type: 'SEARCH_ERROR',
-        payload: 'Oh! 🥱 Bring Some Good Link. This one won’t work!'
+        payload: "Oh! 🥱 Bring Some Good Link. This one won’t work!"
       });
     }
   };
 
   return (
     <div className="min-h-screen overflow-y-auto">
-      <div className="header">
-        <div className="logo-title">
-          <div className="logo-circle">LC</div>
+      <header className="header">
+        <div className="logo-title" aria-label="App Logo and Title">
+          <div className="logo-circle" aria-hidden="true">LC</div>
           <h1>LinkClink</h1>
         </div>
 
-        <div className="theme-switch">
-          <input type="checkbox" id="theme-toggle" onChange={toggleTheme} />
-          <label htmlFor="theme-toggle" className="theme-toggle-switch"></label>
+        <div className="theme-switch" aria-label="Toggle light and dark theme">
+          <input type="checkbox" id="theme-toggle" onChange={toggleTheme} aria-checked={document.body.classList.contains('light-theme')} />
+          <label htmlFor="theme-toggle" className="theme-toggle-switch" />
         </div>
-      </div>
+      </header>
 
-      <p className="tagline">Download anything from any link!</p>
+      <p className="tagline" style={{ textAlign: 'center', marginTop: '0.5rem' }}>Download anything from any link!</p>
 
-      <div className="container">
-        <div className="cont-logo-circle">LC</div>
+      <main className="container" role="main">
+        <div className="cont-logo-circle" aria-hidden="true">LC</div>
         <h1 className="title">LinkClink</h1>
         <p className="mainText">Paste any video, photo, or document link below:</p>
 
@@ -80,37 +84,38 @@ function App() {
           placeholder="Enter link here..."
           value={state.inputValue}
           onChange={(e) => dispatch({ type: 'SET_INPUT', payload: e.target.value })}
+          aria-label="Input URL"
         />
-        <button className="Searchbtn" onClick={fetchFormats}>Search</button>
-      </div>
 
-      {state.showPreview && (
-        <PreviewBox state={state} dispatch={dispatch} />
-      )}
+        <button className="Searchbtn" onClick={fetchFormats} aria-live="polite">
+          Search
+        </button>
+      </main>
 
-      {state.isSearching && (
-        <div className="popup-overlay">
-          <div className="loader"></div>
-          <p>Fetching formats...</p>
+      {/* Show loading spinner popup under search button */}
+      {state.isLoading && (!state.thumbnail || state.formats.length === 0) && (
+        <div className="download-popup" role="status" aria-live="polite">
+          <div className="loading-spinner" aria-hidden="true" />
+          <span>Fetching formats...</span>
         </div>
       )}
 
-      {state.error && (
-        <ErrorPopup
-          message={state.error}
-          onClose={() => dispatch({ type: 'CLEAR_ERROR' })}
-        />
-      )}
+      {/* Show preview when data is available */}
+      {state.showPreview && <PreviewBox state={state} dispatch={dispatch} />}
 
+      {/* Show error popup */}
+      {state.error && <ErrorPopup message={state.error} onClose={() => dispatch({ type: 'CLEAR_ERROR' })} />}
+
+      {/* Show download progress popup */}
       {state.isDownloading && (
-        <div className="popup-overlay">
+        <div className="download-popup" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={state.downloadStatus.percent}>
           <div style={{ width: 100, marginBottom: '1rem' }}>
             <CircularProgressbar
               value={state.downloadStatus.percent}
               text={`${state.downloadStatus.percent}%`}
               styles={buildStyles({
                 textColor: '#fff',
-                pathColor: '#FF7BBF',
+                pathColor: '#ff6f91', // Pinkish (matches palette)
                 trailColor: 'rgba(255, 255, 255, 0.2)',
               })}
             />
@@ -124,7 +129,4 @@ function App() {
   );
 }
 
-/*===========================*/
-/*       Hero Section        */
-/*===========================*/
 export default App;
