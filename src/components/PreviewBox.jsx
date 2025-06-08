@@ -1,56 +1,43 @@
+// linkclink-frontend/src/components/PreviewBox.jsx
 import React from 'react';
-import { API_BASE, WS_URL } from '../globalVariable';
+import axios from 'axios';
+import { API_BASE } from '../globalVariable';
 
 function PreviewBox({ state, dispatch }) {
   const { thumbnail, videoTitle, formats, selectedFormat, inputValue } = state;
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!selectedFormat) return;
 
     dispatch({ type: 'DOWNLOAD_START' });
 
-    // METHOD 1: STREAMED DOWNLOAD (browser download via /stream-download)
-    const streamUrl = `${API_BASE}/stream-download?url=${encodeURIComponent(inputValue)}&format_id=${selectedFormat}&title=${encodeURIComponent(videoTitle)}`;
-
-    const anchor = document.createElement('a');
-    anchor.href = streamUrl;
-    anchor.download = `${videoTitle}.mp4`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-
-    // Optional: simulate instant done state (remove if showing progress is essential)
-    dispatch({ type: 'DOWNLOAD_DONE' });
-
-    // -----------------------------
-    // METHOD 2: WEBSOCKET (keep for later fallback or progress popup)
-    /*
-    const ws = new WebSocket(WS_URL);
-
-    ws.onopen = () => {
-      ws.send(
-        JSON.stringify({
-          type: 'download',
-          data: {
-            url: inputValue,
-            format_id: selectedFormat,
-            title: videoTitle,
-          },
-        })
+    try {
+      const response = await axios.post(
+        `${API_BASE}/stream-download`,
+        {
+          url: inputValue,
+          format_id: selectedFormat,
+        },
+        {
+          responseType: 'blob', // needed to handle video stream as file
+        }
       );
-    };
 
-    ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      if (msg.type === 'progress') {
-        dispatch({ type: 'DOWNLOAD_PROGRESS', payload: msg.data });
-      }
-      if (msg.type === 'done') {
-        dispatch({ type: 'DOWNLOAD_DONE' });
-        ws.close();
-      }
-    };
-    */
+      const blob = new Blob([response.data], { type: 'video/mp4' });
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${videoTitle || 'video'}.mp4`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download failed:', err);
+      alert('Download failed. Please try again.');
+    }
+
+    dispatch({ type: 'DOWNLOAD_DONE' });
   };
 
   return (
