@@ -1,5 +1,5 @@
 import React from 'react';
-import { WS_URL } from '../globalVariable';
+import { API_BASE, WS_URL } from '../globalVariable';
 
 function PreviewBox({ state, dispatch }) {
   const { thumbnail, videoTitle, formats, selectedFormat, inputValue } = state;
@@ -9,7 +9,24 @@ function PreviewBox({ state, dispatch }) {
 
     dispatch({ type: 'DOWNLOAD_START' });
 
+    // METHOD 1: STREAMED DOWNLOAD (browser download via /stream-download)
+    const streamUrl = `${API_BASE}/stream-download?url=${encodeURIComponent(inputValue)}&format_id=${selectedFormat}&title=${encodeURIComponent(videoTitle)}`;
+
+    const anchor = document.createElement('a');
+    anchor.href = streamUrl;
+    anchor.download = `${videoTitle}.mp4`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+
+    // Optional: simulate instant done state (remove if showing progress is essential)
+    dispatch({ type: 'DOWNLOAD_DONE' });
+
+    // -----------------------------
+    // METHOD 2: WEBSOCKET (keep for later fallback or progress popup)
+    /*
     const ws = new WebSocket(WS_URL);
+
     ws.onopen = () => {
       ws.send(
         JSON.stringify({
@@ -33,6 +50,7 @@ function PreviewBox({ state, dispatch }) {
         ws.close();
       }
     };
+    */
   };
 
   return (
@@ -51,7 +69,7 @@ function PreviewBox({ state, dispatch }) {
         {formats.length > 0 ? (
           formats.map((f, i) => (
             <option key={i} value={f.format_id}>
-              {f.resolution} - {f.with_audio} - {f.filesize} MB
+              {f.resolution} - {f.with_audio} - {(f.filesize / (1024 * 1024)).toFixed(1)} MB
             </option>
           ))
         ) : (
